@@ -502,6 +502,9 @@ class _ChatScreenState extends State<ChatScreen> {
   final _scrollController = ScrollController();
   int _currentCategory = 0;
 
+  RealtimeChannel? _channel;
+List<Map<String, dynamic>> _messages = [];
+
   final Set<String> _diacriticKeys = {'n', 'm', '<', '>', '§', 'ñ'};
   final Set<String> _punctuationKeys = {'//', 'b', '-', ':', '.', '"'};
 
@@ -547,6 +550,55 @@ class _ChatScreenState extends State<ChatScreen> {
       'keys': ['//', 'b', '-', ':', '.', '"'],
     },
   };
+  @override
+void initState() {
+  super.initState();
+  _loadMessages();
+  _subscribeToMessages();
+}
+
+Future<void> _loadMessages() async {
+  final data = await supabase
+      .from('messages')
+      .select()
+      .eq('room_id', widget.roomId)
+      .order('created_at');
+  
+  setState(() {
+    _messages = List<Map<String, dynamic>>.from(data);
+  });
+}
+
+void _subscribeToMessages() {
+  _channel = supabase
+      .channel('messages:${widget.roomId}')
+      .onPostgresChanges(
+        event: PostgresChangeEvent.insert,
+        schema: 'public',
+        table: 'messages',
+        filter: PostgresChangeFilter(
+          type: PostgresChangeFilterType.eq,
+          column: 'room_id',
+          value: widget.roomId,
+        ),
+        callback: (payload) {
+          setState(() {
+            _messages.add(payload.newRecord);
+          });
+          
+          Future.delayed(const Duration(milliseconds: 100), () {
+            if (_scrollController.hasClients) {
+              _scrollController.animateTo(
+                _scrollController.position.maxScrollExtent,
+                duration: const Duration(milliseconds: 300),
+                curve: Curves.easeOut,
+              );
+            }
+          });
+        },
+      )
+      .subscribe();
+}
 
   void _onKeyTap(String key) {
     setState(() {
@@ -723,75 +775,54 @@ class _ChatScreenState extends State<ChatScreen> {
       body: Column(
         children: [
           Expanded(
-            child: StreamBuilder<List<Map<String, dynamic>>>(
-              stream: supabase
-                  .from('messages')
-                  .stream(primaryKey: ['id'])
-                  .eq('room_id', widget.roomId)
-                  .order('created_at'),
-              builder: (context, snapshot) {
-                if (snapshot.hasError) {
-                  return Center(child: Text('Erro: ${snapshot.error}'));
-                }
+            child: _messages.isEmpty
+    ? const Center(
+        child: Text(
+          'Nenhuma mensagem ainda.\nComece a digitar!',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey, fontSize: 16),
+        ),
+      )
+    : ListView.builder(
+        controller: _scrollController,
+        padding: const EdgeInsets.all(16),
+        itemCount: _messages.length,
+        itemBuilder: (context, index) {
+          final msg = _messages[index];
+          final userId = supabase.auth.currentUser!.id;
+          final isMe = msg['user_id'] == userId;
 
-                if (!snapshot.hasData) {
-                  return const Center(child: CircularProgressIndicator());
-                }
-
-                final messages = snapshot.data!;
-
-                if (messages.isEmpty) {
-                  return const Center(
-                    child: Text(
-                      'Nenhuma mensagem ainda.\nComece a digitar!',
-                      textAlign: TextAlign.center,
-                      style: TextStyle(color: Colors.grey, fontSize: 16),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  controller: _scrollController,
-                  padding: const EdgeInsets.all(16),
-                  itemCount: messages.length,
-                  itemBuilder: (context, index) {
-                    final msg = messages[index];
-                    final isMe = msg['user_id'] == userId;
-
-                    return Align(
-                      alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
-                      child: Container(
-                        margin: const EdgeInsets.only(bottom: 12),
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        decoration: BoxDecoration(
-                          color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
-                          borderRadius: BorderRadius.circular(12),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withOpacity(0.05),
-                              blurRadius: 4,
-                              offset: const Offset(0, 2),
-                            ),
-                          ],
-                        ),
-                        constraints: BoxConstraints(
-                          maxWidth: MediaQuery.of(context).size.width * 0.75,
-                        ),
-                        child: Text(
-                          msg['text'] ?? '',
-                          style: const TextStyle(
-                            fontSize: 18,
-                            fontFamily: 'ElisFont',
-                            color: Colors.black87,
-                          ),
-                        ),
-                      ),
-                    );
-                  },
-                );
-              },
+          return Align(
+            alignment: isMe ? Alignment.centerRight : Alignment.centerLeft,
+            child: Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              decoration: BoxDecoration(
+                color: isMe ? const Color(0xFFDCF8C6) : Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.05),
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
+              ),
+              constraints: BoxConstraints(
+                maxWidth: MediaQuery.of(context).size.width * 0.75,
+              ),
+              child: Text(
+                msg['text'] ?? '',
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontFamily: 'ElisFont',
+                  color: Colors.black87,
+                ),
+              ),
             ),
-          ),
+          );
+        },
+      ),
           
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
@@ -1070,6 +1101,7 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   void dispose() {
     _scrollController.dispose();
+    _channel?.unsubscribe();
     super.dispose();
   }
 }
