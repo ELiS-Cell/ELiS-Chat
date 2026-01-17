@@ -918,3 +918,174 @@ class _ChatScreenState extends State<ChatScreen> {
           
           // Teclado
           _buildCustomKeyboard(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCustomKeyboard() {
+    final category = _keyboardCategories[_currentCategory]!;
+    final color = category['color'] as Color;
+    final hasSubgroups = category['hasSubgroups'] ?? false;
+
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.grey.shade200,
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            blurRadius: 8,
+            offset: const Offset(0, -4),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          if (hasSubgroups) ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Column(
+                    children: [
+                      Text(
+                        'POLEGAR',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: (category['subgroups']['Polegar'] as List<String>)
+                            .map((key) => Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                                  child: _buildKey(key, color),
+                                ))
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(width: 20),
+                  Container(
+                    width: 2,
+                    height: 50,
+                    color: Colors.grey.shade400,
+                  ),
+                  const SizedBox(width: 20),
+                  Column(
+                    children: [
+                      Text(
+                        'DEMAIS DEDOS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade700,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        children: (category['subgroups']['Demais Dedos'] as List<String>)
+                            .map((key) => Padding(
+                                  padding: const EdgeInsets.symmetric(horizontal: 3),
+                                  child: _buildKey(key, color),
+                                ))
+                            .toList(),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ] else ...[
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Wrap(
+                spacing: 6,
+                runSpacing: 6,
+                alignment: WrapAlignment.center,
+                children: (category['keys'] as List<String>).map((key) {
+                  return _buildKey(key, color);
+                }).toList(),
+              ),
+            ),
+          ],
+          
+          const SizedBox(height: 8),
+          
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              SizedBox(
+                width: 80,
+                child: ElevatedButton(
+                  onPressed: _backspace,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red.shade400,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Icon(Icons.backspace, size: 20),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed: () => _onKeyTap(' '),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.grey.shade400,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                  child: const Text('ESPAÇO', style: TextStyle(fontSize: 14)),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKey(String key, Color color) {
+    return SizedBox(
+      width: 44,
+      height: 44,
+      child: ElevatedButton(
+        onPressed: () => _onKeyTap(key),
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: Colors.white,
+          padding: EdgeInsets.zero,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(8),
+          ),
+          elevation: 2,
+        ),
+        child: Text(
+          key,
+          style: const TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            fontFamily: 'ElisFont',
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+}
