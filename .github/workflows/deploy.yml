@@ -9,30 +9,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      
-      - name: Setup Flutter
-        uses: subosito/flutter-action@v2
+      - uses: subosito/flutter-action@v2
         with:
-          flutter-version: '3.19.0'
           channel: 'stable'
-          
-      - name: Enable Web
-        run: flutter config --enable-web
-
-      - name: Create Web Folder
-        run: flutter create . --platforms web
-
-      - name: Install dependencies
-        run: flutter pub get
-
       - name: Build Web
-        run: flutter build web --release --base-href "/${{ github.event.repository.name }}/"
-
-      - name: Upload Artifacts
+        run: |
+          flutter config --enable-web
+          flutter create . --platforms web --project-name elis_chat
+          flutter pub get
+          flutter build web --release --base-href "/${{ github.event.repository.name }}/"
+      - name: Upload Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: build/web
-
   deploy:
     needs: build
     runs-on: ubuntu-latest
@@ -41,8 +30,6 @@ jobs:
       id-token: write
     environment:
       name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
-      - name: Deploy to GitHub Pages
-        id: deployment
+      - name: Deploy
         uses: actions/deploy-pages@v4
