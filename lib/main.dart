@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import 'package:intl/intl.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -81,7 +80,9 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+    });
     
     try {
       await supabase.auth.signInWithPassword(
@@ -89,7 +90,9 @@ class _LoginScreenState extends State<LoginScreen> {
         password: _passwordController.text.trim(),
       );
     } catch (e) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+      });
       _showError('Erro ao fazer login: Email ou senha incorretos');
     }
   }
@@ -102,7 +105,9 @@ class _LoginScreenState extends State<LoginScreen> {
       return;
     }
 
-    setState(() => _loading = true);
+    setState(() {
+      _loading = true;
+    });
 
     try {
       final response = await supabase.auth.signUp(
@@ -120,16 +125,20 @@ class _LoginScreenState extends State<LoginScreen> {
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
             const SnackBar(
-              content: Text('✅ Conta criada! Verifique seu email.'),
+              content: Text('✅ Conta criada com sucesso!'),
               backgroundColor: Colors.green,
             ),
           );
         }
       }
 
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+      });
     } catch (e) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+      });
       _showError('Erro ao criar conta: $e');
     }
   }
@@ -270,223 +279,6 @@ class _LoginScreenState extends State<LoginScreen> {
   }
 }
 
-    setState(() => _loading = true);
-    
-    try {
-      String phone = _phoneController.text.trim();
-      if (!phone.startsWith('+')) {
-        phone = '+55$phone';
-      }
-
-      await supabase.auth.signInWithOtp(
-        phone: phone,
-        shouldCreateUser: true,
-      );
-
-      setState(() {
-        _codeSent = true;
-        _loading = false;
-      });
-
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Código enviado por SMS!')),
-        );
-      }
-    } catch (e) {
-      setState(() => _loading = false);
-      _showError('Erro ao enviar código: $e');
-    }
-  }
-
-  Future<void> _verifyOTP() async {
-    if (_codeController.text.trim().isEmpty) {
-      _showError('Digite o código recebido');
-      return;
-    }
-
-    setState(() => _loading = true);
-
-    try {
-      String phone = _phoneController.text.trim();
-      if (!phone.startsWith('+')) {
-        phone = '+55$phone';
-      }
-
-      final response = await supabase.auth.verifyOTP(
-        phone: phone,
-        token: _codeController.text.trim(),
-        type: OtpType.sms,
-      );
-
-      if (response.user != null) {
-        // Criar perfil do usuário
-        await supabase.from('profiles').upsert({
-          'id': response.user!.id,
-          'phone_number': phone,
-          'display_name': _nameController.text.trim().isEmpty 
-              ? phone 
-              : _nameController.text.trim(),
-        });
-      }
-    } catch (e) {
-      setState(() => _loading = false);
-      _showError('Código inválido');
-    }
-  }
-
-  void _showError(String message) {
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(message)),
-      );
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFECE5DD),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24),
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Icon(
-                Icons.sign_language,
-                size: 80,
-                color: Color(0xFF075E54),
-              ),
-              const SizedBox(height: 24),
-              const Text(
-                'ELiS Chat',
-                style: TextStyle(
-                  fontSize: 32,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF075E54),
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Comunicação em Escrita de Sinais',
-                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
-              ),
-              const SizedBox(height: 48),
-              
-              if (!_codeSent) ...[
-                TextField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  decoration: InputDecoration(
-                    labelText: 'Número de telefone',
-                    hintText: '(62) 99999-9999',
-                    prefixText: '+55 ',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _sendOTP,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF075E54),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Enviar código',
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
-                  ),
-                ),
-              ] else ...[
-                Text(
-                  'Código enviado para ${_phoneController.text}',
-                  style: TextStyle(color: Colors.grey.shade700),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _nameController,
-                  decoration: InputDecoration(
-                    labelText: 'Seu nome (opcional)',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                TextField(
-                  controller: _codeController,
-                  keyboardType: TextInputType.number,
-                  maxLength: 6,
-                  decoration: InputDecoration(
-                    labelText: 'Código de verificação',
-                    hintText: '123456',
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    filled: true,
-                    fillColor: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                SizedBox(
-                  width: double.infinity,
-                  height: 50,
-                  child: ElevatedButton(
-                    onPressed: _loading ? null : _verifyOTP,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF075E54),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
-                    child: _loading
-                        ? const CircularProgressIndicator(color: Colors.white)
-                        : const Text(
-                            'Verificar',
-                            style: TextStyle(fontSize: 16, color: Colors.white),
-                          ),
-                  ),
-                ),
-                TextButton(
-                  onPressed: () {
-                    setState(() {
-                      _codeSent = false;
-                      _codeController.clear();
-                    });
-                  },
-                  child: const Text('Voltar'),
-                ),
-              ],
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  @override
-  void dispose() {
-    _phoneController.dispose();
-    _codeController.dispose();
-    _nameController.dispose();
-    super.dispose();
-  }
-}
-
 // ============ TELA DE CONTATOS ============
 class ContactsScreen extends StatefulWidget {
   const ContactsScreen({super.key});
@@ -509,7 +301,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
     try {
       final currentUserId = supabase.auth.currentUser!.id;
       
-      // Buscar salas do usuário
       final rooms = await supabase
           .from('room_participants')
           .select('room_id, chat_rooms!inner(id, name, is_group)')
@@ -520,7 +311,9 @@ class _ContactsScreenState extends State<ContactsScreen> {
         _loading = false;
       });
     } catch (e) {
-      setState(() => _loading = false);
+      setState(() {
+        _loading = false;
+      });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Erro ao carregar contatos: $e')),
@@ -530,19 +323,19 @@ class _ContactsScreenState extends State<ContactsScreen> {
   }
 
   Future<void> _createNewChat() async {
-    final phoneController = TextEditingController();
+    final emailController = TextEditingController();
     
     await showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Novo Chat'),
         content: TextField(
-          controller: phoneController,
+          controller: emailController,
           decoration: const InputDecoration(
-            labelText: 'Telefone do contato',
-            hintText: '+5562999999999',
+            labelText: 'Email do contato',
+            hintText: 'amigo@email.com',
           ),
-          keyboardType: TextInputType.phone,
+          keyboardType: TextInputType.emailAddress,
         ),
         actions: [
           TextButton(
@@ -551,17 +344,16 @@ class _ContactsScreenState extends State<ContactsScreen> {
           ),
           TextButton(
             onPressed: () async {
-              final phone = phoneController.text.trim();
-              if (phone.isEmpty) return;
+              final email = emailController.text.trim();
+              if (email.isEmpty) return;
               
               Navigator.pop(context);
               
               try {
-                // Buscar usuário pelo telefone
                 final profiles = await supabase
                     .from('profiles')
                     .select()
-                    .eq('phone_number', phone)
+                    .eq('phone_number', email)
                     .limit(1);
 
                 if (profiles.isEmpty) {
@@ -576,14 +368,12 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 final contactId = profiles.first['id'];
                 final currentUserId = supabase.auth.currentUser!.id;
 
-                // Criar sala
                 final room = await supabase
                     .from('chat_rooms')
-                    .insert({'is_group': false})
+                    .insert({'is_group': false, 'name': email})
                     .select()
                     .single();
 
-                // Adicionar participantes
                 await supabase.from('room_participants').insert([
                   {'room_id': room['id'], 'user_id': currentUserId},
                   {'room_id': room['id'], 'user_id': contactId},
@@ -597,7 +387,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
                     MaterialPageRoute(
                       builder: (context) => ChatScreen(
                         roomId: room['id'],
-                        roomName: phone,
+                        roomName: email,
                       ),
                     ),
                   );
@@ -851,7 +641,6 @@ class _ChatScreenState extends State<ChatScreen> {
         'text': messageText,
       });
 
-      // Salvar novo sinal se for único
       final normalized = messageText.replaceAll(' ', '').trim();
       if (normalized.isNotEmpty) {
         final existing = await supabase
@@ -908,7 +697,9 @@ class _ChatScreenState extends State<ChatScreen> {
 
   void _backspace() {
     if (_textSpans.isEmpty) return;
-    setState(() => _textSpans.removeLast());
+    setState(() {
+      _textSpans.removeLast();
+    });
   }
 
   void _clearText() {
@@ -1001,7 +792,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           
-          // Campo de input
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
             decoration: BoxDecoration(
@@ -1052,7 +842,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           
-          // Seletor de categorias
           Container(
             padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 16),
             color: Colors.grey.shade50,
@@ -1077,7 +866,11 @@ class _ChatScreenState extends State<ChatScreen> {
                         final isActive = _currentCategory == index;
                         
                         return GestureDetector(
-                          onTap: () => setState(() => _currentCategory = index),
+                          onTap: () {
+                            setState(() {
+                              _currentCategory = index;
+                            });
+                          },
                           child: Container(
                             margin: const EdgeInsets.symmetric(horizontal: 4),
                             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
@@ -1106,7 +899,6 @@ class _ChatScreenState extends State<ChatScreen> {
             ),
           ),
           
-          // Teclado
           _buildCustomKeyboard(),
         ],
       ),
@@ -1148,7 +940,8 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: Colors.grey.shade700,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      co nst
+                      SizedBox(height: 6),
                       Row(
                         children: (category['subgroups']['Polegar'] as List<String>)
                             .map((key) => Padding(
