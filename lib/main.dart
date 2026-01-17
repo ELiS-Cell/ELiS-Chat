@@ -350,12 +350,13 @@ class _ContactsScreenState extends State<ContactsScreen> {
             Navigator.pop(context);
             
             try {
-              final response = await supabase
+              // Buscar usuário
+              final profiles = await supabase
                   .from('profiles')
                   .select()
                   .eq('phone_number', email);
 
-              if (response == null || (response as List).isEmpty) {
+              if (profiles.isEmpty) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(content: Text('Usuário não encontrado')),
@@ -364,45 +365,17 @@ class _ContactsScreenState extends State<ContactsScreen> {
                 return;
               }
 
-              final profiles = response as List;
               final contactId = profiles.first['id'];
               final currentUserId = supabase.auth.currentUser!.id;
 
-              // Verificar se já existe chat entre os usuários
-              final existingRooms = await supabase
-                  .from('room_participants')
-                  .select('room_id')
-                  .eq('user_id', currentUserId);
-
-              for (var room in existingRooms) {
-                final otherParticipants = await supabase
-                    .from('room_participants')
-                    .select()
-                    .eq('room_id', room['room_id'])
-                    .eq('user_id', contactId);
-                
-                if ((otherParticipants as List).isNotEmpty) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Chat já existe!')),
-                    );
-                  }
-                  _loadContacts();
-                  return;
-                }
-              }
-
-              final roomResponse = await supabase
+              // Criar sala
+              final room = await supabase
                   .from('chat_rooms')
                   .insert({'is_group': false, 'name': email})
-                  .select();
+                  .select()
+                  .single();
 
-              if (roomResponse == null || (roomResponse as List).isEmpty) {
-                throw Exception('Erro ao criar sala');
-              }
-
-              final room = (roomResponse as List).first;
-
+              // Adicionar participantes
               await supabase.from('room_participants').insert([
                 {'room_id': room['id'], 'user_id': currentUserId},
                 {'room_id': room['id'], 'user_id': contactId},
@@ -424,7 +397,7 @@ class _ContactsScreenState extends State<ContactsScreen> {
             } catch (e) {
               if (mounted) {
                 ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Erro: $e')),
+                  SnackBar(content: Text('Erro: ${e.toString()}')),
                 );
               }
             }
@@ -435,7 +408,6 @@ class _ContactsScreenState extends State<ContactsScreen> {
     ),
   );
 }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
