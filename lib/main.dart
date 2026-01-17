@@ -68,17 +68,207 @@ class LoginScreen extends StatefulWidget {
 }
 
 class _LoginScreenState extends State<LoginScreen> {
-  final _phoneController = TextEditingController();
-  final _codeController = TextEditingController();
+  final _emailController = TextEditingController();
+  final _passwordController = TextEditingController();
   final _nameController = TextEditingController();
-  bool _codeSent = false;
+  bool _isSignUp = false;
   bool _loading = false;
 
-  Future<void> _sendOTP() async {
-    if (_phoneController.text.trim().isEmpty) {
-      _showError('Digite seu número de telefone');
+  Future<void> _signIn() async {
+    if (_emailController.text.trim().isEmpty || 
+        _passwordController.text.trim().isEmpty) {
+      _showError('Preencha email e senha');
       return;
     }
+
+    setState(() => _loading = true);
+    
+    try {
+      await supabase.auth.signInWithPassword(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+    } catch (e) {
+      setState(() => _loading = false);
+      _showError('Erro ao fazer login: Email ou senha incorretos');
+    }
+  }
+
+  Future<void> _signUp() async {
+    if (_emailController.text.trim().isEmpty || 
+        _passwordController.text.trim().isEmpty ||
+        _nameController.text.trim().isEmpty) {
+      _showError('Preencha todos os campos');
+      return;
+    }
+
+    setState(() => _loading = true);
+
+    try {
+      final response = await supabase.auth.signUp(
+        email: _emailController.text.trim(),
+        password: _passwordController.text.trim(),
+      );
+
+      if (response.user != null) {
+        await supabase.from('profiles').upsert({
+          'id': response.user!.id,
+          'phone_number': _emailController.text.trim(),
+          'display_name': _nameController.text.trim(),
+        });
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('✅ Conta criada! Verifique seu email.'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+
+      setState(() => _loading = false);
+    } catch (e) {
+      setState(() => _loading = false);
+      _showError('Erro ao criar conta: $e');
+    }
+  }
+
+  void _showError(String message) {
+    if (mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(message)),
+      );
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFECE5DD),
+      body: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.sign_language,
+                size: 80,
+                color: Color(0xFF075E54),
+              ),
+              const SizedBox(height: 24),
+              const Text(
+                'ELiS Chat',
+                style: TextStyle(
+                  fontSize: 32,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF075E54),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Comunicação em Escrita de Sinais',
+                style: TextStyle(fontSize: 16, color: Colors.grey.shade700),
+              ),
+              const SizedBox(height: 48),
+              
+              if (_isSignUp) ...[
+                TextField(
+                  controller: _nameController,
+                  decoration: InputDecoration(
+                    labelText: 'Seu nome',
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+                const SizedBox(height: 16),
+              ],
+              
+              TextField(
+                controller: _emailController,
+                keyboardType: TextInputType.emailAddress,
+                decoration: InputDecoration(
+                  labelText: 'Email',
+                  hintText: 'seu@email.com',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              TextField(
+                controller: _passwordController,
+                obscureText: true,
+                decoration: InputDecoration(
+                  labelText: 'Senha',
+                  hintText: 'Mínimo 6 caracteres',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  filled: true,
+                  fillColor: Colors.white,
+                ),
+              ),
+              const SizedBox(height: 16),
+              
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: _loading ? null : (_isSignUp ? _signUp : _signIn),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF075E54),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: _loading
+                      ? const CircularProgressIndicator(color: Colors.white)
+                      : Text(
+                          _isSignUp ? 'Criar conta' : 'Entrar',
+                          style: const TextStyle(fontSize: 16, color: Colors.white),
+                        ),
+                ),
+              ),
+              
+              const SizedBox(height: 16),
+              
+              TextButton(
+                onPressed: () {
+                  setState(() {
+                    _isSignUp = !_isSignUp;
+                    _nameController.clear();
+                  });
+                },
+                child: Text(
+                  _isSignUp 
+                      ? 'Já tem conta? Entrar' 
+                      : 'Não tem conta? Criar',
+                  style: const TextStyle(color: Color(0xFF075E54)),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _emailController.dispose();
+    _passwordController.dispose();
+    _nameController.dispose();
+    super.dispose();
+  }
+}
 
     setState(() => _loading = true);
     
