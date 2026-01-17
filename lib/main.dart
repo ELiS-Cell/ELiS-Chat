@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized();
   runApp(const ELiSApp());
 }
 
@@ -47,15 +48,27 @@ class _ChatScreenState extends State<ChatScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text("ELiS Chat"), backgroundColor: Colors.teal),
+      appBar: AppBar(
+        title: const Text("ELiS Chat", style: TextStyle(color: Colors.white)),
+        backgroundColor: const Color(0xFF075E54),
+      ),
       body: Column(
         children: [
           Expanded(
             child: ListView.builder(
               reverse: true,
               itemCount: _messages.length,
-              itemBuilder: (context, i) => ListTile(
-                title: Text(_messages[i], style: const TextStyle(fontSize: 24)),
+              itemBuilder: (context, i) => Align(
+                alignment: Alignment.centerRight,
+                child: Container(
+                  margin: const EdgeInsets.all(8),
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFDCF8C6),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(_messages[i], style: const TextStyle(fontSize: 24)),
+                ),
               ),
             ),
           ),
@@ -64,17 +77,46 @@ class _ChatScreenState extends State<ChatScreen> {
             color: Colors.white,
             child: Row(
               children: [
-                Expanded(child: Text(_currentInput.join(""), style: const TextStyle(fontSize: 24))),
-                IconButton(icon: const Icon(Icons.send), onPressed: _send),
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      _currentInput.isEmpty ? "Digite em ELiS..." : _currentInput.join(""),
+                      style: const TextStyle(fontSize: 24),
+                    ),
+                  ),
+                ),
+                IconButton(
+                  icon: const Icon(Icons.send, color: Color(0xFF075E54)),
+                  onPressed: _send,
+                ),
               ],
             ),
           ),
-          Container(
-            height: 100,
-            color: Colors.grey[200],
-            child: Center(child: Text("Teclado ELiS aqui", style: TextStyle(color: Colors.grey))),
-          )
+          _buildKeyboard(),
         ],
+      ),
+    );
+  }
+
+  Widget _buildKeyboard() {
+    final List<String> keys = ['q', 'w', 'e', 'r', 't', 'y', 'u', 'i', 'o', 'p'];
+    return Container(
+      padding: const EdgeInsets.only(bottom: 20, top: 10),
+      color: Colors.grey[200],
+      child: Wrap(
+        spacing: 8,
+        runSpacing: 8,
+        alignment: WrapAlignment.center,
+        children: keys.map((k) => ElevatedButton(
+          onPressed: () => _addSymbol(k),
+          style: ElevatedButton.styleFrom(backgroundColor: Colors.teal),
+          child: Text(k, style: const TextStyle(color: Colors.white, fontSize: 18)),
+        )).toList(),
       ),
     );
   }
