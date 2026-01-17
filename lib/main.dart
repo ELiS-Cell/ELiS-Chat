@@ -322,90 +322,119 @@ class _ContactsScreenState extends State<ContactsScreen> {
     }
   }
 
-  Future<void> _createNewChat() async {
-    final emailController = TextEditingController();
-    
-    await showDialog(
-      context: context,
-      builder: (context) => AlertDialog(
-        title: const Text('Novo Chat'),
-        content: TextField(
-          controller: emailController,
-          decoration: const InputDecoration(
-            labelText: 'Email do contato',
-            hintText: 'amigo@email.com',
-          ),
-          keyboardType: TextInputType.emailAddress,
+ Future<void> _createNewChat() async {
+  final emailController = TextEditingController();
+  
+  await showDialog(
+    context: context,
+    builder: (context) => AlertDialog(
+      title: const Text('Novo Chat'),
+      content: TextField(
+        controller: emailController,
+        decoration: const InputDecoration(
+          labelText: 'Email do contato',
+          hintText: 'amigo@email.com',
         ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
-          ),
-          TextButton(
-            onPressed: () async {
-              final email = emailController.text.trim();
-              if (email.isEmpty) return;
-              
-              Navigator.pop(context);
-              
-              try {
-                final profiles = await supabase
-                    .from('profiles')
-                    .select()
-                    .eq('phone_number', email)
-                    .limit(1);
+        keyboardType: TextInputType.emailAddress,
+      ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.pop(context),
+          child: const Text('Cancelar'),
+        ),
+        TextButton(
+          onPressed: () async {
+            final email = emailController.text.trim();
+            if (email.isEmpty) return;
+            
+            Navigator.pop(context);
+            
+            try {
+              final response = await supabase
+                  .from('profiles')
+                  .select()
+                  .eq('phone_number', email);
 
-                if (profiles.isEmpty) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Usuário não encontrado')),
-                    );
-                  }
-                  return;
-                }
-
-                final contactId = profiles.first['id'];
-                final currentUserId = supabase.auth.currentUser!.id;
-
-                final room = await supabase
-                    .from('chat_rooms')
-                    .insert({'is_group': false, 'name': email})
-                    .select()
-                    .single();
-
-                await supabase.from('room_participants').insert([
-                  {'room_id': room['id'], 'user_id': currentUserId},
-                  {'room_id': room['id'], 'user_id': contactId},
-                ]);
-
-                _loadContacts();
-                
-                if (mounted) {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (context) => ChatScreen(
-                        roomId: room['id'],
-                        roomName: email,
-                      ),
-                    ),
-                  );
-                }
-              } catch (e) {
+              if (response == null || (response as List).isEmpty) {
                 if (mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text('Erro: $e')),
+                    const SnackBar(content: Text('Usuário não encontrado')),
                   );
                 }
+                return;
               }
-            },
-            child: const Text('Criar'),
-          ),
-        ],
-      ),
-    );
-  }
+
+              final profiles = response as List;
+              final contactId = profiles.first['id'];
+              final currentUserId = supabase.auth.currentUser!.id;
+
+              // Verificar se já existe chat entre os usuários
+              final existingRooms = await supabase
+                  .from('room_participants')
+                  .select('room_id')
+                  .eq('user_id', currentUserId);
+
+              for (var room in existingRooms) {
+                final otherParticipants = await supabase
+                    .from('room_participants')
+                    .select()
+                    .eq('room_id', room['room_id'])
+                    .eq('user_id', contactId);
+                
+                if ((otherParticipants as List).isNotEmpty) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Chat já existe!')),
+                    );
+                  }
+                  _loadContacts();
+                  return;
+                }
+              }
+
+              final roomResponse = await supabase
+                  .from('chat_rooms')
+                  .insert({'is_group': false, 'name': email})
+                  .select();
+
+              if (roomResponse == null || (roomResponse as List).isEmpty) {
+                throw Exception('Erro ao criar sala');
+              }
+
+              final room = (roomResponse as List).first;
+
+              await supabase.from('room_participants').insert([
+                {'room_id': room['id'], 'user_id': currentUserId},
+                {'room_id': room['id'], 'user_id': contactId},
+              ]);
+
+              _loadContacts();
+              
+              if (mounted) {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => ChatScreen(
+                      roomId: room['id'],
+                      roomName: email,
+                    ),
+                  ),
+                );
+              }
+            } catch (e) {
+              if (mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text('Erro: $e')),
+                );
+              }
+            }
+          },
+          child: const Text('Criar'),
+        ),
+      ],
+    ),
+  );
+}
 
   @override
   Widget build(BuildContext context) {
