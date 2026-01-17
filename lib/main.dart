@@ -940,7 +940,7 @@ class _ChatScreenState extends State<ChatScreen> {
                           color: Colors.grey.shade700,
                         ),
                       ),
-                      co nst
+                      const
                       SizedBox(height: 6),
                       Row(
                         children: (category['subgroups']['Polegar'] as List<String>)
