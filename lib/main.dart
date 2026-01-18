@@ -972,8 +972,7 @@ void _subscribeToMessages() {
                           color: Colors.grey.shade700,
                         ),
                       ),
-                      const
-                      SizedBox(height: 6),
+                      const SizedBox(height: 6),
                       Row(
                         children: (category['subgroups']['Polegar'] as List<String>)
                             .map((key) => Padding(
